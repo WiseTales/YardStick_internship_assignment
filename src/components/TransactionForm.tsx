@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Transaction } from "@/types/transaction";
+import { Transaction, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "@/types/transaction";
 
 interface TransactionFormProps {
   transaction?: Transaction | null;
@@ -18,7 +18,8 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
     amount: '',
     description: '',
     date: '',
-    type: 'expense' as 'income' | 'expense'
+    type: 'expense' as 'income' | 'expense',
+    category: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -28,14 +29,29 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
         amount: transaction.amount.toString(),
         description: transaction.description,
         date: transaction.date,
-        type: transaction.type
+        type: transaction.type,
+        category: transaction.category
       });
     } else {
-      // Set default date to today
+      // Set default date to today and default category
       const today = new Date().toISOString().split('T')[0];
-      setFormData(prev => ({ ...prev, date: today }));
+      setFormData(prev => ({ 
+        ...prev, 
+        date: today,
+        category: prev.type === 'expense' ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]
+      }));
     }
   }, [transaction]);
+
+  // Update default category when type changes
+  useEffect(() => {
+    if (!transaction) {
+      setFormData(prev => ({
+        ...prev,
+        category: prev.type === 'expense' ? EXPENSE_CATEGORIES[0] : INCOME_CATEGORIES[0]
+      }));
+    }
+  }, [formData.type, transaction]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -50,6 +66,10 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
 
     if (!formData.date) {
       newErrors.date = 'Date is required';
+    }
+
+    if (!formData.category) {
+      newErrors.category = 'Category is required';
     }
 
     setErrors(newErrors);
@@ -67,7 +87,8 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
       amount: parseFloat(formData.amount),
       description: formData.description.trim(),
       date: formData.date,
-      type: formData.type
+      type: formData.type,
+      category: formData.category
     });
 
     // Reset form if not editing
@@ -76,10 +97,13 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
         amount: '',
         description: '',
         date: new Date().toISOString().split('T')[0],
-        type: 'expense'
+        type: 'expense',
+        category: EXPENSE_CATEGORIES[0]
       });
     }
   };
+
+  const categoryOptions = formData.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -99,6 +123,28 @@ const TransactionForm = ({ transaction, onSubmit, onCancel }: TransactionFormPro
             <SelectItem value="expense">Expense</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="category">Category</Label>
+        <Select 
+          value={formData.category} 
+          onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+        >
+          <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categoryOptions.map(category => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {errors.category && (
+          <p className="text-sm text-red-600">{errors.category}</p>
+        )}
       </div>
 
       <div className="space-y-2">
